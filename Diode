@@ -1,0 +1,70 @@
+import RPi.GPIO as GPIO
+import socket
+import mariadb
+import time
+
+# --- GPIO opsætning ---
+INTERNET_LED = 17  # LED for internetstatus (koblet til GPIO 27 / pin 13)
+DB_LED = 27        # LED for databaseforbindelse (koblet til GPIO 17 / pin 11)
+
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(INTERNET_LED, GPIO.OUT)
+GPIO.setup(DB_LED, GPIO.OUT)
+
+# --- Database konfiguration ---
+db_config = {
+    "user": "admin",
+    "password": "admin",
+    "host": "152.115.77.165",
+    "port": 50110,
+    "database": "ølbord",
+    "connect_timeout": 3
+}
+
+# --- Tjek internetforbindelse ---
+def har_internet(host="8.8.8.8", port=53, timeout=2):
+    try:
+        socket.setdefaulttimeout(timeout)
+        socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
+        return True
+    except socket.error:
+        return False
+
+# --- Tjek databaseforbindelse ---
+def har_database():
+    try:
+        conn = mariadb.connect(**db_config)
+        conn.close()
+        return True
+    except mariadb.Error:
+        return False
+
+# --- Hovedprogram ---
+try:
+    print("🔄 Starter LED-overvågning af internet og database...")
+    while True:
+        # Internetforbindelse
+        if har_internet():
+            GPIO.output(INTERNET_LED, GPIO.HIGH)
+            print("🌐 Internet: OK")
+        else:
+            GPIO.output(INTERNET_LED, GPIO.LOW)
+            print("🌐 Internet: FEJL")
+
+        # Databaseforbindelse
+        if har_database():
+            GPIO.output(DB_LED, GPIO.HIGH)
+            print("🛢️ Database: OK")
+        else:
+            GPIO.output(DB_LED, GPIO.LOW)
+            print("🛢️ Database: FEJL")
+
+        time.sleep(5)
+
+except KeyboardInterrupt:
+    print("🛑 Program stoppet af bruger.")
+
+finally:
+    GPIO.output(INTERNET_LED, GPIO.LOW)
+    GPIO.output(DB_LED, GPIO.LOW)
+    GPIO.cleanup()
