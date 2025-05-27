@@ -63,6 +63,7 @@ def opdater_database(liter):  #når ny måling af liter bliver detekteret vil de
 def main_loop(): #Kører hele tiden og måler vandforbrug
     global pulse_count, liter_total #Gør det muligt at læse og ændre variablerne,
     print("Starter måling. Ctrl+C for at stoppe.")
+    cb = pi.callback(FLOW_PIN, pigpio.FALLING_EDGE, pulse_callback) #Holder øje med pinnen hvis der sker noget, og så "callbacker" den når der kommer en puls, og bliver kørt igen, cb gør at literen bliver gemt i en vairablel ved cb.cancel 
     try:
         while True:
             start = pulse_count #Gemmer antal pulser ved starten af intervallet
