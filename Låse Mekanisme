@@ -1,47 +1,49 @@
-import mariadb             # Importerer MariaDB biblioteket, så vi kan forbinde og interagere med databasen
-import time                # Importerer tidsmodul til forsinkelse i loopet
-import RPi.GPIO as GPIO    # Importerer GPIO-biblioteket for at styre Raspberry Pi's pins
+import RPi.GPIO as GPIO           # Importerer bibliotek til at styre GPIO pins
+import mariadb                    # Importerer bibliotek til MariaDB-forbindelse
+import time                       # Importerer bibliotek til tidshåndtering
 
-# --- GPIO Setup ---
-MOTOR_PIN = 17             # Definerer hvilken GPIO pin motoren er forbundet til
-GPIO.setmode(GPIO.BCM)     # Biblioteket Rpi.GPIO kræver denne linje, da den ikke ved hvilke GPIO pins den skal bruge
-GPIO.setup(MOTOR_PIN, GPIO.OUT)  # Sætter motorens pin som OUTPUT, så vi kan sende signal
+# --- Servo konfiguration ---
+SERVO_PIN = 16                   # GPIO16 svarer til fysisk pin 36
+GPIO.setmode(GPIO.BCM)          # Bruger BCM pin-numre (ikke fysiske pin-numre)
+GPIO.setup(SERVO_PIN, GPIO.OUT) # Sætter servo-pinen som output
 
-# --- Database konfiguration ---
-db_config = {              # Opretter en dictionary med alle forbindelsesoplysninger
-    "user": "admin",       # Brugernavn til databasen
-    "password": "admin",   # Adgangskode til databasen
-    "host": "152.115.77.165",  # IP-adressen på database-serveren
-    "port": 50110,         # Portnummer MariaDB lytter på
-    "database": "motor"    # Navnet på databasen vi arbejder med
+# Opsæt PWM signal på servo (50 Hz = standard til servoer)
+servo = GPIO.PWM(SERVO_PIN, 50)
+servo.start(0)                  # Starter servo med 0% duty cycle (ingen bevægelse)
+
+# --- Databasekonfiguration ---
+db_config = {
+    "user": "admin",             # Brugernavn til MariaDB
+    "password": "admin",         # Adgangskode til MariaDB
+    "host": "152.115.77.165",    # IP til MariaDB server
+    "port": 50110,               # Port MariaDB lytter på
+    "database": "motor",         # Navn på databasen
 }
 
-# Opret forbindelse til databasen og aktiver autocommit
-# autocommit=True betyder at alle ændringer (INSERT, UPDATE osv.) automatisk gemmes uden at kalde conn.commit()
-conn = mariadb.connect(**db_config, autocommit=True)
-cursor = conn.cursor()     # Opretter en cursor som gør at man kan skrive i og sende kommandoer og læse
-
-# Start scriptet
 try:
-    last_status = None     # Gemmer status, så vi undgår spam
-    while True:            # Uendeligt loop
-        cursor.execute("SELECT status FROM motor_kontrol WHERE id=1")  # Henter status fra række med id=1
-        status = cursor.fetchone()[0]  # Får værdien ud af resultatet
+    # Opret forbindelse til databasen og aktiver autocommit
+    # autocommit=True betyder at alle ændringer (INSERT, UPDATE osv.) automatisk gemmes uden at kalde conn.commit()
+    conn = mariadb.connect(**db_config, autocommit=True)
+    cursor = conn.cursor()
+    print("Forbundet til databasen!")
 
-        if status != last_status:     # Kun hvis værdien er ændret siden sidst
-            if status == 1:
-                GPIO.output(MOTOR_PIN, GPIO.HIGH)  # Tænder for motoren (sender 3.3V til pin)
-                print("🔧 Motor TÆNDT (GPIO HIGH)")
-            else:
-                GPIO.output(MOTOR_PIN, GPIO.LOW)   # Slukker for motoren
-                print("🔌 Motor SLUKKET (GPIO LOW)")
-            last_status = status      # Opdaterer sidste status
+    while True:
+        cursor.execute("SELECT status FROM motor_kontrol WHERE id=1")  # Henter status-værdi
+        status = cursor.fetchone()[0]  # Gemmer værdien (0 eller 1)
 
-        time.sleep(0.5)  # Venter 0.5 sekunder før næste tjek, så vi ikke belaster systemet
+        if status == 1:
+            print("-Låser op-")
+            servo.ChangeDutyCycle(12.5)  # Ca. 180 grader (kan variere lidt)
+        else:
+            print("-Låser-")
+            servo.ChangeDutyCycle(2.5)   # Ca. 0 grader
 
-except KeyboardInterrupt:  # Hvis brugeren trykker Ctrl+C
-    print("Stopper scriptet...")
+        time.sleep(1)  # Venter 1 sekund før næste check
 
+except mariadb.Error as e:
+    print(f"Databasefejl: {e}")
+except KeyboardInterrupt:
+    print("Afslutter script...")
 finally:
-    GPIO.cleanup()         # Rydder op i GPIO (vigtigt så pins ikke forbliver i en forkert tilstand)
-    conn.close()           # Lukker forbindelsen til databasen korrekt
+    servo.stop()           # Stopper PWM signal
+    GPIO.cleanup()         # Nulstiller alle GPIO-pins
