@@ -12,7 +12,7 @@ liter_total = 0.0 # Holder styr på hvor mange liter der er målt, starter også
 def pulse_callback(gpio, level, tick): #Bliver kaldt hvis der kommer en ædnring i flowmåleren
     global pulse_count #Global, gør det muligt at ændre pulse_count da det er en variabel
     if level == 0:  # faldende kant, hjælper med at tælle pulser, falder den fra 1 -> 0 tæller den 1 puls som fortæller mængden af vandgennemstrømning        pulse_count += 1 #Øger puls tælleren med 1
-
+        pulse_count += 1 # Øger puls tælleren med 1
 # --- Opsæt pigpio ---
 pi = pigpio.pi() #Opretter forbindelse til pigpio, som gør det muligt at styre GPIO pins
 if not pi.connected: #Tjekker forbindelsen lykkedes eller ikke gør, via software, om pigpio er aktiveret, ellers "sudo pigpiod"
@@ -29,7 +29,7 @@ def opdater_database(liter):  #når ny måling af liter bliver detekteret vil de
     #liter er argumentet af antallet målt siden sidste opdatering og gemmer derefter den nye "liter" funktion
     print(f"Forbinder til database for at opdatere {liter:.3f} liter.")
     try:
-      conn = mariadb.connect( 
+        conn = mariadb.connect( 
             user="admin",
             password="admin",
             host="152.115.77.165",
