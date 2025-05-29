@@ -24,26 +24,18 @@ pi.set_mode(FLOW_PIN, pigpio.INPUT) #Vi har ikke fortalt hvad pin 18 bruges til,
 pi.set_pull_up_down(FLOW_PIN, pigpio.PUD_UP) #Aktivere en modstand(pull-up) så den ikke modtagere tilfældige signaler men et klart signal når den bru>cb = pi.callback(FLOW_PIN, pigpio.FALLING_EDGE, pulse_callback)#hver gang der kommer en puls, vil callback kalde efter denne funktion
 #uden den her linje sker der intet når flowmåleren sender et signal
 
-# --- Databasekonfiguration ---
-db_config = { #Config, opretter en dictionary som er mulig at genbruge,
-    "user": "admin", #Brugernavn til DB som matcher serveren
-    "password": "admin",#Kodeord til DB brugeren
-    "host": "152.115.77.165",#IP-Adressen til DB
-    "port": 50110,#Porten som MariaDB lytter på
-    "database": "ølbord"#Nanvet på DB vi ønsker at oprette forbindelse til
-}
 
 def opdater_database(liter):  #når ny måling af liter bliver detekteret vil den forsøge at opdatere
     #liter er argumentet af antallet målt siden sidste opdatering og gemmer derefter den nye "liter" funktion
     print(f"Forbinder til database for at opdatere {liter:.3f} liter.")
     try:
-      conn = mariadb.connect( #Opretter forbindelse til DB server
-            user=db_config["user"], #Bruger user fra db_config
-            password=db_config["password"],
-            host=db_config["host"],
-            port=db_config["port"],
-            database=db_config["database"],
-            connect_timeout=3  # timeout efter 3 sekunder for at undgå netværksfejl
+      conn = mariadb.connect( 
+            user="admin",
+            password="admin",
+            host="152.115.77.165",
+            port=50110,
+            database="ølbord",
+            connect_timeout=3
         )
         cur = conn.cursor() #Cursor bruges til at skrive i en SQL kommando, conn.cursor er så forbindelsen til SQL og og sende kommandoer
         cur.execute(
